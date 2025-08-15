@@ -71,23 +71,23 @@ void APhysicsCharacter::Tick(float DeltaSeconds)
 	// Highlighting objects when we are not holding an object.
 	if (m_PhysicsHandle->GetGrabbedComponent() == nullptr)
 	{
+		UMeshComponent* MeshComponent = nullptr;
 		FHitResult Hit;
+		
 		if (GetWorld()->LineTraceSingleByChannel(
 			Hit,
 			FirstPersonCameraComponent->GetComponentLocation(),
 			FirstPersonCameraComponent->GetComponentLocation() + FirstPersonCameraComponent->GetForwardVector() * m_MaxGrabDistance,
 			ECC_Visibility))
 		{
-			UActorComponent* Component = Hit.GetComponent();
-			if (UMeshComponent* MeshComponent = Cast<UMeshComponent>(Component))
+			UMeshComponent* HitResult = Cast<UMeshComponent>(Hit.GetComponent());
+			if (IsValid(HitResult) && HitResult->Mobility == EComponentMobility::Movable)
 			{
-				SetHighlightedMesh(Cast<UMeshComponent>(MeshComponent));
+				MeshComponent = HitResult;
 			}
 		}
-		else
-		{
-			SetHighlightedMesh(nullptr);
-		}
+
+		SetHighlightedMesh(MeshComponent);
 	}
 
 	// Grabbed object update
@@ -102,45 +102,49 @@ void APhysicsCharacter::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 
 	// Add Input Mapping Context
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = nullptr;
+	if (IsValid(PlayerController))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			Subsystem->AddMappingContext(DefaultMappingContext, 0);
-		}
+		Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+	}
+	
+	if (IsValid(Subsystem))
+	{
+		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
 }
 
 void APhysicsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {	
 	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Move);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Look);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Sprint);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APhysicsCharacter::Sprint);
-		EnhancedInputComponent->BindAction(PickUpAction, ETriggerEvent::Started, this, &APhysicsCharacter::GrabObject);
-		EnhancedInputComponent->BindAction(PickUpAction, ETriggerEvent::Completed, this, &APhysicsCharacter::ReleaseObject);
-	}
-	else
+	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	
+	if (!IsValid(EnhancedInputComponent))
 	{
 		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input Component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		return;
 	}
+	
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Move);
+	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Look);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &APhysicsCharacter::Sprint);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APhysicsCharacter::Sprint);
+	EnhancedInputComponent->BindAction(PickUpAction, ETriggerEvent::Started, this, &APhysicsCharacter::GrabObject);
+	EnhancedInputComponent->BindAction(PickUpAction, ETriggerEvent::Completed, this, &APhysicsCharacter::ReleaseObject);
 }
 
 void APhysicsCharacter::SetIsSprinting(bool NewIsSprinting)
 {
-	// We don't allow to trigger sprinting when we don't have stamina.
-	if (bIsSprinting == NewIsSprinting || (bIsSprinting == false && (m_Stamina == 0 || !bReleasedSprint)))
+	const bool bIsTryingToStartInvalidSprint = bIsSprinting == false && (m_Stamina == 0 || !bReleasedSprint);
+	if (bIsSprinting == NewIsSprinting || bIsTryingToStartInvalidSprint)
 	{
 		return;
 	}
 
 	bIsSprinting = NewIsSprinting;
-	
 	GetCharacterMovement()->MaxWalkSpeed = m_BaseSpeed * (bIsSprinting ? m_SprintSpeedMultiplier : 1.0f);
 }
 
@@ -186,29 +190,40 @@ void APhysicsCharacter::Sprint(const FInputActionValue& Value)
 
 void APhysicsCharacter::GrabObject(const FInputActionValue& Value)
 {
+	if (!IsValid(FirstPersonCameraComponent) || !IsValid(m_PhysicsHandle))
+	{
+		return;
+	}
+	
 	FHitResult Hit;
-	if (GetWorld()->LineTraceSingleByChannel(
+	if (!GetWorld()->LineTraceSingleByChannel(
 		Hit,
 		FirstPersonCameraComponent->GetComponentLocation(),
 		FirstPersonCameraComponent->GetComponentLocation() + FirstPersonCameraComponent->GetForwardVector() * m_MaxGrabDistance,
 		ECC_Visibility))
 	{
-		UActorComponent* ActorComponent = Hit.GetActor()->GetComponentByClass(UMeshComponent::StaticClass());
-		SetHighlightedMesh(Cast<UMeshComponent>(ActorComponent));
-
-		m_GrabDistance = Hit.Distance;
-		m_PhysicsHandle->InterpolationSpeed = m_BaseInterpolationSpeed / (Hit.GetComponent()->GetMass() / 2.0f);
-		m_PhysicsHandle->GrabComponentAtLocationWithRotation(Hit.GetComponent(), Hit.BoneName, Hit.Location, Hit.GetComponent()->GetComponentRotation());
-
-		FRotator CameraRotation = FirstPersonCameraComponent->GetComponentRotation();
-		m_GrabbedObjectRelativeRotation = Hit.GetComponent()->GetComponentRotation() - FRotator(-CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll);
+		return;
 	}
+	
+	UMeshComponent* MeshComponent = Cast<UMeshComponent>(Hit.GetActor()->GetComponentByClass(UMeshComponent::StaticClass()));
+	if (!IsValid(MeshComponent) || MeshComponent->Mobility != EComponentMobility::Movable)
+	{
+		return;
+	}
+
+	SetHighlightedMesh(MeshComponent);
+
+	m_GrabDistance = Hit.Distance;
+	m_PhysicsHandle->InterpolationSpeed = m_BaseInterpolationSpeed / (Hit.GetComponent()->GetMass() / 2.0f);
+	m_PhysicsHandle->GrabComponentAtLocationWithRotation(Hit.GetComponent(), Hit.BoneName, Hit.Location, Hit.GetComponent()->GetComponentRotation());
+
+	FRotator CameraRotation = FirstPersonCameraComponent->GetComponentRotation();
+	m_GrabbedObjectRelativeRotation = Hit.GetComponent()->GetComponentRotation() - FRotator(-CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll);
 }
 
 void APhysicsCharacter::ReleaseObject(const FInputActionValue& Value)
 {
-	// @TODO: Release grabbed object using UPhysicsHandleComponent
-	if (m_PhysicsHandle->GetGrabbedComponent() != nullptr)
+	if (IsValid(m_PhysicsHandle) && m_PhysicsHandle->GetGrabbedComponent() != nullptr)
 	{
 		m_PhysicsHandle->ReleaseComponent();
 		SetHighlightedMesh(nullptr);
@@ -217,15 +232,19 @@ void APhysicsCharacter::ReleaseObject(const FInputActionValue& Value)
 
 void APhysicsCharacter::SetHighlightedMesh(UMeshComponent* StaticMesh)
 {
-	if(m_HighlightedMesh)
+	if(IsValid(m_HighlightedMesh))
 	{
 		m_HighlightedMesh->SetOverlayMaterial(nullptr);
 	}
-	m_HighlightedMesh = StaticMesh;
-	if (m_HighlightedMesh)
+
+	if (!IsValid(StaticMesh))
 	{
-		m_HighlightedMesh->SetOverlayMaterial(m_HighlightMaterial);
+		m_HighlightedMesh = nullptr;
+		return;
 	}
+	
+	m_HighlightedMesh = StaticMesh;
+	m_HighlightedMesh->SetOverlayMaterial(m_HighlightMaterial);
 }
 
 float APhysicsCharacter::GetStamina() const

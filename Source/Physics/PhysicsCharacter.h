@@ -13,6 +13,7 @@ class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
 class UPhysicsHandleComponent;
+class UMaterialInterface;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -91,7 +92,7 @@ public:
 
 	/** Highlight overlay material */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Config, meta = (AllowPrivateAccess = "true"))
-	class UMaterialInterface* m_HighlightMaterial;
+	UMaterialInterface* m_HighlightMaterial;
 
 	/** Maximum distance to allow component grabbing */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Config, meta = (AllowPrivateAccess = "true"))
