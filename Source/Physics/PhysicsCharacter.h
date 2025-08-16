@@ -31,10 +31,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
 
-	/** MappingContext */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputMappingContext* DefaultMappingContext;
-
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
@@ -122,7 +118,6 @@ public:
 protected:
 
 	/** APawn **/
-	virtual void NotifyControllerChanged() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
 	/** APhysicsCharacter **/
@@ -133,6 +128,11 @@ protected:
 	void ReleaseObject(const FInputActionValue& Value);
 
 	void SetHighlightedMesh(UMeshComponent* StaticMesh);
+
+private:
+	void UpdateStamina(const float DeltaTime);
+	void HighlightObjectInFrontOfCamera();
+	void UpdatePhysicsHandleTransform();
 
 public:
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

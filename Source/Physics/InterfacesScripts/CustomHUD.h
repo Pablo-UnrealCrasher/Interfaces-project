@@ -20,12 +20,22 @@ class PHYSICS_API ACustomHUD : public AHUD
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
 	TSubclassOf<UUserWidget> UpgradeMenuUserWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
+	TSubclassOf<UUserWidget> PointCounterUserWidgetClass;
 	
 	UPROPERTY()
 	UUserWidget* HeaderUserWidget;
 	
 	UPROPERTY()
 	UUserWidget* UpgradeMenuUserWidget;
+
+	UPROPERTY()
+	UUserWidget* PointCounterUserWidget;
 	
 	virtual void BeginPlay() override;
+
+public:
+	void ShowUpgradeMenu();
+	void HideUpgradeMenu();
 };

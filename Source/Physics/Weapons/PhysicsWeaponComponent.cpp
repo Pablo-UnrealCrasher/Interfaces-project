@@ -8,10 +8,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "MainController.h"
 #include "Animation/AnimInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
-#include "Field/FieldSystemActor.h"
 
 // Sets default values for this component's properties
 UPhysicsWeaponComponent::UPhysicsWeaponComponent()
@@ -23,23 +23,23 @@ UPhysicsWeaponComponent::UPhysicsWeaponComponent()
 
 void UPhysicsWeaponComponent::Fire()
 {
-	if (Character == nullptr || Character->GetController() == nullptr)
+	if (!IsValid(Character) || Character->GetController() == nullptr)
 	{
 		return;
 	}
 	
 	// Try and play the sound if specified
-	if (FireSound != nullptr)
+	if (IsValid(FireSound))
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, FireSound, Character->GetActorLocation());
 	}
 	
 	// Try and play a firing animation if specified
-	if (FireAnimation != nullptr)
+	if (IsValid(FireAnimation))
 	{
 		// Get the animation object for the arms mesh
 		UAnimInstance* AnimInstance = Character->GetMesh1P()->GetAnimInstance();
-		if (AnimInstance != nullptr)
+		if (IsValid(AnimInstance))
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
@@ -48,58 +48,35 @@ void UPhysicsWeaponComponent::Fire()
 
 bool UPhysicsWeaponComponent::AttachWeapon(APhysicsCharacter* TargetCharacter)
 {
-	Character = TargetCharacter;
-
 	// Check that the character is valid, and has no weapon component yet
-	if (Character == nullptr || Character->GetInstanceComponents().FindItemByClass<UPhysicsWeaponComponent>())
+	if (!IsValid(TargetCharacter) || TargetCharacter->GetInstanceComponents().FindItemByClass<UPhysicsWeaponComponent>())
 	{
 		return false;
 	}
+	
+	Character = TargetCharacter;
 
 	// Attach the weapon to the First Person Character
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, true);
 	AttachToComponent(Character->GetMesh1P(), AttachmentRules, FName(TEXT("GripPoint")));
 
 	// Set up action bindings
-	if (APlayerController* PlayerController = Cast<APlayerController>(Character->GetController()))
+	AMainController* PlayerController = Cast<AMainController>(Character->GetController());
+	if (IsValid(PlayerController))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			// Set the priority of the mapping to 1, so that it overrides the Jump action with the Fire action when using touch input
-			Subsystem->AddMappingContext(FireMappingContext, 1);
-		}
-
-		if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerController->InputComponent))
-		{
-			// Fire
-			EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this, &UPhysicsWeaponComponent::Fire);
-		}
+		PlayerController->NotifyPickedUpWeapon(this);
 	}
 
 	return true;
 }
 
-void UPhysicsWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	// ensure we have a character owner
-	if (Character != nullptr)
-	{
-		// remove the input mapping context from the Player Controller
-		if (APlayerController* PlayerController = Cast<APlayerController>(Character->GetController()))
-		{
-			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-			{
-				Subsystem->RemoveMappingContext(FireMappingContext);
-			}
-		}
-	}
-
-	// maintain the EndPlay call chain
-	Super::EndPlay(EndPlayReason);
-}
-
 void UPhysicsWeaponComponent::ApplyDamage(const FHitResult& HitResult) const
 {
+	if (!IsValid(Character) || !IsValid(m_WeaponDamageType))
+	{
+		return;
+	}
+	
 	TArray<AActor*> IgnoreActors;
 	IgnoreActors.Add(Character);
 	
@@ -137,5 +114,9 @@ void UPhysicsWeaponComponent::ApplyDamage(const FHitResult& HitResult) const
 	}
 
 	FTransform FsMasterFieldTransform = FTransform((-HitResult.ImpactNormal).Rotation(), HitResult.ImpactPoint, FVector::One());
-	GetWorld()->SpawnActor(m_FsMasterField, &FsMasterFieldTransform, FActorSpawnParameters());
+
+	if (IsValid(m_FsMasterField))
+	{
+		GetWorld()->SpawnActor(m_FsMasterField, &FsMasterFieldTransform, FActorSpawnParameters());
+	}
 }

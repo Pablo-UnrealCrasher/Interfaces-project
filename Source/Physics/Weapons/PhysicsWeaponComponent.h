@@ -28,14 +28,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
 	FVector MuzzleOffset;
 
-	/** MappingContext */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	class UInputMappingContext* FireMappingContext;
-
-	/** Fire Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	class UInputAction* FireAction;
-
 	/** Weapon damage config*/
 	UPROPERTY(Instanced, EditAnywhere, BlueprintReadOnly, Category=Damage, meta=(AllowPrivateAccess = "true"))
 	UWeaponDamageType* m_WeaponDamageType;
@@ -43,6 +35,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Damage)
 	TSubclassOf<AActor> m_FsMasterField;
 
+	/** The Character holding this weapon*/
+	APhysicsCharacter* Character;
+
+	
+	// FUNCTIONS
+	
 	/** Sets default values for this component's properties */
 	UPhysicsWeaponComponent();	
 
@@ -53,16 +51,6 @@ public:
 	/** Make the weapon Fire a Projectile */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	virtual void Fire();
-
-protected:
-
-	/** Ends gameplay for this component. */
-	UFUNCTION()
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-public:
-	/** The Character holding this weapon*/
-	APhysicsCharacter* Character;
 
 	UFUNCTION()
 	void ApplyDamage(const FHitResult& HitResult) const;

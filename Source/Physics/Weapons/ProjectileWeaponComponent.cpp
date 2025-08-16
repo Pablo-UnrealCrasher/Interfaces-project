@@ -9,27 +9,27 @@ void UProjectileWeaponComponent::Fire()
 {
 	Super::Fire();
 
+	UWorld* const World = GetWorld();
+	
 	// Try and fire a projectile
-	if (m_ProjectileClass != nullptr)
+	if (!IsValid(m_ProjectileClass) || !IsValid(World))
 	{
-		UWorld* const World = GetWorld();
-		if (World != nullptr)
-		{
-			APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
-			const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
-			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-			const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
+		return;
+	}
+	
+	APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
+	const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
+	// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+	const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
 
-			//Set Spawn Collision Handling Override
-			FActorSpawnParameters ActorSpawnParams;
-			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+	//Set Spawn Collision Handling Override
+	FActorSpawnParameters ActorSpawnParams;
+	ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
-			// Spawn the projectile at the muzzle
-			APhysicsProjectile* ProjectileActor = World->SpawnActor<APhysicsProjectile>(m_ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-			if (ProjectileActor)
-			{
-				ProjectileActor->m_OwnerWeapon = this;
-			}
-		}
+	// Spawn the projectile at the muzzle
+	APhysicsProjectile* ProjectileActor = World->SpawnActor<APhysicsProjectile>(m_ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+	if (ProjectileActor)
+	{
+		ProjectileActor->m_OwnerWeapon = this;
 	}
 }

@@ -51,68 +51,15 @@ void APhysicsCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	// Stamina update
-	if (bIsSprinting)
-	{
-		m_Stamina -= m_StaminaDepletionRate * DeltaSeconds;
-		
-		if (m_Stamina <= 0)
-		{
-			SetIsSprinting(false);
-			m_Stamina = 0;
-		}
-	}
-	else
-	{
-		m_Stamina += m_StaminaRecoveryRate * DeltaSeconds;
-		m_Stamina = FMath::Min(m_Stamina, m_MaxStamina);
-	}
+	UpdateStamina(DeltaSeconds);
 
 	// Highlighting objects when we are not holding an object.
-	if (m_PhysicsHandle->GetGrabbedComponent() == nullptr)
+	if (!IsValid(m_PhysicsHandle) || m_PhysicsHandle->GetGrabbedComponent() == nullptr)
 	{
-		UMeshComponent* MeshComponent = nullptr;
-		FHitResult Hit;
-		
-		if (GetWorld()->LineTraceSingleByChannel(
-			Hit,
-			FirstPersonCameraComponent->GetComponentLocation(),
-			FirstPersonCameraComponent->GetComponentLocation() + FirstPersonCameraComponent->GetForwardVector() * m_MaxGrabDistance,
-			ECC_Visibility))
-		{
-			UMeshComponent* HitResult = Cast<UMeshComponent>(Hit.GetComponent());
-			if (IsValid(HitResult) && HitResult->Mobility == EComponentMobility::Movable)
-			{
-				MeshComponent = HitResult;
-			}
-		}
-
-		SetHighlightedMesh(MeshComponent);
-	}
-
-	// Grabbed object update
-	m_PhysicsHandle->SetTargetLocation(GetFirstPersonCameraComponent()->GetComponentLocation() + GetFirstPersonCameraComponent()->GetForwardVector() * m_GrabDistance);
-
-	FRotator CameraRotation = FirstPersonCameraComponent->GetComponentRotation();
-	m_PhysicsHandle->SetTargetRotation(FRotator(-CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll) + m_GrabbedObjectRelativeRotation);
-}
-
-void APhysicsCharacter::NotifyControllerChanged()
-{
-	Super::NotifyControllerChanged();
-
-	// Add Input Mapping Context
-	APlayerController* PlayerController = Cast<APlayerController>(Controller);
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = nullptr;
-	if (IsValid(PlayerController))
-	{
-		Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+		HighlightObjectInFrontOfCamera();
 	}
 	
-	if (IsValid(Subsystem))
-	{
-		Subsystem->AddMappingContext(DefaultMappingContext, 0);
-	}
+	UpdatePhysicsHandleTransform();
 }
 
 void APhysicsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -245,6 +192,62 @@ void APhysicsCharacter::SetHighlightedMesh(UMeshComponent* StaticMesh)
 	
 	m_HighlightedMesh = StaticMesh;
 	m_HighlightedMesh->SetOverlayMaterial(m_HighlightMaterial);
+}
+
+void APhysicsCharacter::UpdateStamina(const float DeltaTime)
+{
+	if (!bIsSprinting) // Recovering Stamina.
+	{
+		m_Stamina += m_StaminaRecoveryRate * DeltaTime;
+		m_Stamina = FMath::Min(m_Stamina, m_MaxStamina);
+		return;
+	}
+
+	// Spending Stamina.
+	m_Stamina -= m_StaminaDepletionRate * DeltaTime;
+	
+	if (m_Stamina <= 0)
+	{
+		SetIsSprinting(false);
+		m_Stamina = 0;
+	}
+}
+
+void APhysicsCharacter::HighlightObjectInFrontOfCamera()
+{
+	UMeshComponent* MeshComponent = nullptr;
+	FHitResult Hit;
+		
+	if (GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		FirstPersonCameraComponent->GetComponentLocation(),
+		FirstPersonCameraComponent->GetComponentLocation() + FirstPersonCameraComponent->GetForwardVector() * m_MaxGrabDistance,
+		ECC_Visibility))
+	{
+		UMeshComponent* HitResult = Cast<UMeshComponent>(Hit.GetComponent());
+		
+		if (IsValid(HitResult) && HitResult->Mobility == EComponentMobility::Movable)
+		{
+			MeshComponent = HitResult;
+		}
+	}
+
+	SetHighlightedMesh(MeshComponent);
+}
+
+void APhysicsCharacter::UpdatePhysicsHandleTransform()
+{
+	if (!IsValid(m_PhysicsHandle))
+	{
+		return;
+	}
+
+	const FVector NewLocation = GetFirstPersonCameraComponent()->GetComponentLocation() + GetFirstPersonCameraComponent()->GetForwardVector() * m_GrabDistance;
+	m_PhysicsHandle->SetTargetLocation(NewLocation);
+
+	const FRotator CameraRotation = FirstPersonCameraComponent->GetComponentRotation();
+	const FRotator NewRotation = FRotator(-CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll) + m_GrabbedObjectRelativeRotation;
+	m_PhysicsHandle->SetTargetRotation(NewRotation);
 }
 
 float APhysicsCharacter::GetStamina() const

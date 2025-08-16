@@ -15,14 +15,42 @@ void ACustomHUD::BeginPlay()
 
 	EnableInput(PlayerController);
 	
-	if (HeaderUserWidgetClass)
+	if (IsValid(HeaderUserWidgetClass))
 	{
 		HeaderUserWidget = CreateWidget(PlayerController, HeaderUserWidgetClass, FName(TEXT("HeaderUserWidget")));
 		HeaderUserWidget->AddToViewport();
 	}
-	if (UpgradeMenuUserWidgetClass)
+	if (IsValid(PointCounterUserWidgetClass))
+	{
+		PointCounterUserWidget = CreateWidget(PlayerController, PointCounterUserWidgetClass, FName(TEXT("PointCounterUserWidget")));
+		PointCounterUserWidget->AddToViewport();
+	}
+	if (IsValid(UpgradeMenuUserWidgetClass))
 	{
 		UpgradeMenuUserWidget = CreateWidget(PlayerController, UpgradeMenuUserWidgetClass, FName(TEXT("UpgradeMenuUserWidget")));
+	}
+}
+
+void ACustomHUD::ShowUpgradeMenu()
+{
+	if (IsValid(HeaderUserWidget))
+	{
+		HeaderUserWidget->RemoveFromParent();
+	}
+	if (IsValid(UpgradeMenuUserWidget))
+	{
 		UpgradeMenuUserWidget->AddToViewport();
+	}
+}
+
+void ACustomHUD::HideUpgradeMenu()
+{
+	if (IsValid(HeaderUserWidget))
+	{
+		HeaderUserWidget->AddToViewport();
+	}
+	if (IsValid(UpgradeMenuUserWidget))
+	{
+		UpgradeMenuUserWidget->RemoveFromParent();
 	}
 }
