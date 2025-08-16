@@ -58,6 +58,18 @@ void AMainController::NotifyToggleUpgradeMenu(const FInputActionValue& Value)
 	{
 		bIsUpgradeMenuOpen ? CustomHUD->ShowUpgradeMenu() : CustomHUD->HideUpgradeMenu();
 	}
+
+	// Allowing the Cursor to be used.
+	SetShowMouseCursor(bIsUpgradeMenuOpen);
+	SetMouseLocation(960, 540);
+	if (bIsUpgradeMenuOpen)
+	{
+		SetInputMode(FInputModeGameAndUI());
+	}
+	else
+	{
+		SetInputMode(FInputModeGameOnly());
+	}
 }
 
 void AMainController::ToggleInputMappingContext(UEnhancedInputLocalPlayerSubsystem* Subsystem,
