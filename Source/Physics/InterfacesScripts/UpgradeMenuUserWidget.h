@@ -13,5 +13,4 @@ UCLASS()
 class PHYSICS_API UUpgradeMenuUserWidget : public UUserWidget
 {
 	GENERATED_BODY()
-	
 };
