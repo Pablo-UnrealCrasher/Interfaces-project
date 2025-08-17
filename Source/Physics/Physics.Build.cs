@@ -8,7 +8,8 @@ public class Physics : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Physics", "GeometryCollectionEngine", "UMG" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Physics", "GeometryCollectionEngine", "UMG", "Slate", "SlateCore"
+		});
 
         PrivateIncludePaths.Add("Physics");
     }
