@@ -6,10 +6,12 @@
 #include "Blueprint/UserWidget.h"
 #include "UpgradeButton.generated.h"
 
+DECLARE_DYNAMIC_DELEGATE(FUpgradeObtained);
+DECLARE_DYNAMIC_DELEGATE(FUpgradeAlreadyObtained);
+DECLARE_DYNAMIC_DELEGATE(FUpgradeFailed);
+
 class APhysicsGameMode;
 class UImage;
-DECLARE_DYNAMIC_DELEGATE(FUpgradeObtained);
-
 class UButton;
 class UProgressBar;
 /**
@@ -52,6 +54,8 @@ private:
 
 public:
 	FUpgradeObtained OnUpgradeObtained;
+	FUpgradeAlreadyObtained OnUpgradeAlreadyObtained;
+	FUpgradeFailed OnUpgradeFailed;
 
 	UFUNCTION()
 	void UnlockUpgrade();

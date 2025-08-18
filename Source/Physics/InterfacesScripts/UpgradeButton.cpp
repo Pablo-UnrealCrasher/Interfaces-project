@@ -18,6 +18,13 @@ void UUpgradeButton::UnlockUpgrade()
 
 void UUpgradeButton::OnButtonPressed()
 {
+	// If we already have the Upgrade, we Display some feedback that this button cannot be used again.
+	if (bUpgradeObtained)
+	{
+		OnUpgradeAlreadyObtained.ExecuteIfBound();
+		return;
+	}
+	
 	bButtonPressed = true;
 
 	if (IsValid(UpgradeButton))
@@ -113,13 +120,21 @@ void UUpgradeButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		{
 			NoPointsImage->SetVisibility(ESlateVisibility::Visible);
 			TimeLeftOfNoPointsImageVisible = TIME_NO_POINTS_IMAGE_IS_VISIBLE_FOR;
+			OnUpgradeFailed.ExecuteIfBound();
 			return;
 		}
 
 		PhysicsGameMode->SetPointCount(PhysicsGameMode->GetPointCount() - 1);
 		bUpgradeObtained = true;
-		UpgradeButton->SetIsEnabled(false);
 		OnUpgradeObtained.ExecuteIfBound();
+
+		// Painting our button green.
+		FButtonStyle NewStyle = UpgradeButton->GetStyle();
+		NewStyle.Normal.TintColor = FLinearColor(0.29126f, 1.f, 0.405048f, 1.f);
+		NewStyle.Disabled.TintColor = FLinearColor(0.29126f, 1.f, 0.405048f, 1.f);
+		NewStyle.Hovered.TintColor = FLinearColor(0.29126f, 1.f, 0.405048f, 1.f);
+		NewStyle.Pressed.TintColor = FLinearColor(0.29126f, 1.f, 0.405048f, 1.f);
+		UpgradeButton->SetStyle(NewStyle);
 	}
 	else if (IsValid(UpgradeProgressBar))
 	{
